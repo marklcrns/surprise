@@ -295,3 +295,7 @@ setInterval(() => {
   mouse.x = undefined;
   mouse.y = undefined;
 }, 1000);
+
+hidden.addEventListener('click', (event) => {
+  alert("Ilang months na tayo???????")
+});

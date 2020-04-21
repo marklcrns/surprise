@@ -12,6 +12,8 @@ let currMsg;
 const size = carouselImages[0].clientWidth;
 
 carouselSlide.style.transform = 'translateX(' + -size * counter + 'px)';
+messages[0].style.visibility = 'visible';
+messages[0].style.opacity = '1';
 
 // Button Listeners
 nextBtn.addEventListener('click', () => {
@@ -30,9 +32,15 @@ nextBtn.addEventListener('click', () => {
   } else if (counter === carouselImages.length - 1) {
     currMsg = 0;
     prevMsg = counter - 2;
+    // show prevBtn after first revolution
+    prevBtn.style.visibility = 'visible';
+    prevBtn.style.opacity = '1';
   } else {
     currMsg = counter - 1;
     prevMsg = counter - 2;
+  }
+
+  if (counter === carouselImages.length - 1) {
   }
 
   console.log(currMsg);
