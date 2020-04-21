@@ -298,4 +298,5 @@ setInterval(() => {
 
 hidden.addEventListener('click', (event) => {
   alert("Ilang months na tayo???????")
+  alert("Hay nako kinalimutaaan...")
 });
