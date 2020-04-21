@@ -2,6 +2,7 @@
 // Animated Clouds Effect - https://www.youtube.com/watch?v=hF-QBhDG-wE
 
 const canvas = document.querySelector('canvas');
+const hidden = document.querySelector('#hidden-link');
 const c = canvas.getContext('2d');
 
 // adjust canvas to window height and width
@@ -10,17 +11,30 @@ const screenHeight = window.innerHeight;
 canvas.width = screenWidth;
 canvas.height = screenHeight;
 
-let particleArray = [];
-const colors = [
-  'rgba(255, 255, 255, 0.7)',
-  'rgba(0, 120, 255, 0.5)',
-  'rgba(0, 180, 255, 0.7)',
-  'rgba(200, 100, 100, 0.6)',
-];
+// base size
+let baseSize;
+if (screenWidth >= screenHeight) {
+  baseSize = screenHeight;
+} else {
+  baseSize = screenWidth;
+}
 
-const maxSize = 20;
+const maxSize = 30;
 const minSize = 0;
-const mouseRadius = 50;
+const mouseRadius = baseSize / 20;
+const particleCt = screenWidth * screenHeight * 0.002
+let distance;
+
+// gold particle counter
+let goldCt = 0;
+const goldSize = 5;
+const successGoldCt = baseSize / 3;
+
+console.log(screenWidth);
+console.log(screenHeight);
+console.log(particleCt);
+console.log(successGoldCt);
+
 
 // mouse position
 const mouse = {
@@ -32,6 +46,18 @@ window.addEventListener('mousemove', (event) => {
   mouse.y = event.y;
   // console.log(mouse);  // DELETE THIS
 });
+
+// particle container
+let particleArray = [];
+
+
+const colors = [
+  'rgba(255, 255, 255, 0.7)',
+  'rgba(200, 100, 100, 0.7)',
+  'rgba(0, 180, 255, 0.7)',
+  'rgba(100, 200, 50, 0.6)',
+];
+
 // create constructor function for particle
 class Particle {
   constructor(x, y, directionX, directionY, size, color) {
@@ -40,10 +66,21 @@ class Particle {
     this.directionX = directionX;
     this.directionY = directionY;
     this.size = size;
+    this.origColor = color
     this.color = color;
+    this.restrict = false;
+    this.isGold = false;
+    this.shrinkLock = false;
+    this.success = false;
   }
 
-  // add draw method to particle prototype
+  // restriction coordinate constructor
+  restrict(x, y) {
+    this.x = x;
+    this.y = y;
+  }
+
+  // draw method to particle prototype
   draw() {
     c.beginPath();
     c.arc(this.x, this.y, this.size, 0, Math.PI * 2, false);
@@ -51,15 +88,37 @@ class Particle {
     c.fill();
   }
 
-  // add update method to particle prototype
-  update() {
-    // restriction
-    const restrictRadius = 30;
-    const restrict = {
-      x: canvas.width / 2,
-      y: canvas.height / 2,
-    };
+  // check if particle is within restiction
+  checkParticleStatus() {
+    // get distance from the center
+    distance = Math.sqrt(((screenWidth / 2 - this.x) ** 2) + ((screenHeight / 2 - this.y) ** 2));
+    if (distance > baseSize / 4 && distance < baseSize / 4 + baseSize / 10) {
+      this.restrict = true;
+    } else {
+      this.restrict = false;
+    }
+  }
 
+  // turn particle into small gold particle within restriction
+  makeGold() {
+    this.color = 'rgba(212, 175, 55, 0.8)';
+    this.isGold = true;
+    goldCt += 1;
+    console.log(goldCt);
+  }
+
+  // turn particle back to normal
+  makeNormal() {
+    this.color = this.origColor;
+    this.size = 0;
+    this.isGold = false;
+    goldCt -= 1;
+    console.log(goldCt);
+  }
+
+  // update method to particle prototype
+  update() {
+    // bounce off wall to opposite direction
     if (this.x + this.size * 2 > canvas.width
       || this.x - this.size * 2 < 0) {
       this.directionX = -this.directionX;
@@ -68,30 +127,55 @@ class Particle {
       || this.y - this.size * 2 < 0) {
       this.directionY = -this.directionY;
     }
-    this.x += this.directionX;
-    this.y += this.directionY;
 
-    // mouse interactivity
+    // if gold, set slow movement, otherwise
+    if (this.isGold && this.shrinkLock) {
+      this.x += this.directionX * 0.5;
+      this.y += this.directionY * 0.5;
+    } else {
+      this.x += this.directionX * 5;
+      this.y += this.directionY * 5;
+    }
+
+    this.checkParticleStatus();
+
+    // enlarge particle when on mouse hover, otherwise shrink to min size.
+    // skip if particle is restricted
+    // --------------------------------------------------------
     if (mouse.x - this.x < mouseRadius
       && mouse.x - this.x > -mouseRadius
       && mouse.y - this.y < mouseRadius
       && mouse.y - this.y > -mouseRadius) {
       if (this.size < maxSize) {
+        // enlarge particle
         this.size += 3;
+        // turn particle into gold if restricted
+        if (this.restrict && !this.isGold) {
+          this.makeGold();
+        }
+        // turn off shrinklock on golds when mousemove
+        if (this.isGold) {
+          this.shrinkLock = false;
+        }
       }
-    } else if (this.size > minSize) {
-      // do not shrink circle within restrict radius
-      if (this.x - restrict.x < restrictRadius
-      && this.x - restrict.x > -restrictRadius
-      && this.y - restrict.y < restrictRadius
-      && this.y - restrict.y > -restrictRadius) {
-        this.size = 5;
-      }
+    } else if (this.size > minSize && !this.shrinkLock) {
       this.size -= 0.5;
+      if (this.size <= goldSize && this.isGold) {
+        this.shrinkLock = true;
+      }
     }
+
+    // turn back to normal if particle escaped
+    if (!this.restrict && this.isGold) {
+      this.makeNormal();
+      this.shrinkLock = false;
+    }
+
+    // hide particle
     if (this.size < 0) {
       this.size = 0;
     }
+
     this.draw();
   }
 }
@@ -99,7 +183,7 @@ class Particle {
 // create particle array
 function init() {
   particleArray = [];
-  for (let i = 0; i < 3000; i += 1) {
+  for (let i = 0; i < particleCt; i += 1) {
     const size = 0;
     // generate random particle location
     const x = (Math.random() * ((window.innerWidth - size * 2) - (size * 2)) + size * 2);
@@ -114,12 +198,8 @@ function init() {
   }
 }
 
-// animation loop
-function animate() {
-  requestAnimationFrame(animate);
-  c.clearRect(0, 0, window.innerWidth, window.innerHeight);
-
-  // TODO: LINE
+function canvasGrid() {
+  // Grid lines
   const canvasMaxWidth = screenWidth;
   const canvasMaxHeight = screenHeight;
   const canvasMinWidth = 1;
@@ -176,7 +256,25 @@ function animate() {
   c.strokeStyle = '#000000';
   c.stroke();
   c.closePath();
+}
 
+
+// animation loop
+function animate() {
+  requestAnimationFrame(animate);
+
+  // check if circle restriction is complete
+  if (goldCt >= successGoldCt) {
+    hidden.style.visibility = 'visible';
+    hidden.style.opacity = '1';
+  } else {
+    hidden.style.visibility = 'hidden';
+    hidden.style.opacity = '0';
+  }
+
+  c.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+  // canvasGrid();
 
   for (let i = 0; i < particleArray.length; i += 1) {
     particleArray[i].update();
