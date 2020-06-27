@@ -35,7 +35,6 @@ console.log(screenHeight);
 console.log(particleCt);
 console.log(successGoldCt);
 
-
 // mouse position
 const mouse = {
   x: null,
